@@ -19,10 +19,15 @@ Run:
 """
 
 import os
+import re
 import json
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+
+
+EXCEL_ILLEGAL_CHAR_RE = re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F]")
+PT_DECIMAL_RE = re.compile(r"^\s*([+-]?)\s*(\d{1,3}(?:[ .\u00A0\u202F]\d{3})*|\d+),(\d+)\s*$")
 
 try:
     import fitz  # PyMuPDF
@@ -339,6 +344,7 @@ class PDFAreaSelector:
                 self.status("No tables extracted.")
                 return
             combined = pd.concat(frames, ignore_index=True)
+            combined = combined.map(self._sanitize_excel_value)
             combined.to_excel(out_path, index=False, header=False)
             self.status(f"Saved {len(combined)} rows -> {out_path}")
             messagebox.showinfo("Done", f"Extraction complete. Rows: {len(combined)}\nSaved: {out_path}")
@@ -375,6 +381,18 @@ class PDFAreaSelector:
         lower_y = max(0, min(pdf_h, lower_y))
         upper_y = max(0, min(pdf_h, upper_y))
         return f"{left:.2f},{lower_y:.2f},{right:.2f},{upper_y:.2f}"
+
+    def _sanitize_excel_value(self, value):
+        if not isinstance(value, str):
+            return value
+        cleaned = EXCEL_ILLEGAL_CHAR_RE.sub("", value).strip()
+        match = PT_DECIMAL_RE.match(cleaned)
+        if not match:
+            return cleaned
+
+        sign, integer_part, decimal_part = match.groups()
+        integer_part = re.sub(r"[ .\u00A0\u202F]", "", integer_part)
+        return float(f"{sign}{integer_part}.{decimal_part}")
 
     # ---------------- ZOOM ----------------
     def zoom_in(self):
