@@ -3,7 +3,7 @@
 ## Clone the repository
 
 ```bash
-git clone git@github.com:gabmeirinho/bank-statement-converter.git
+git clone https://github.com/gabmeirinho/bank-statement-converter.git
 cd bank-statement-converter
 ```
 
